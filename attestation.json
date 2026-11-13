@@ -1,0 +1,9 @@
+{
+  "pluginId": "neodex.metronome",
+  "repo": "NDesumeur/neodex-plugin-metronome",
+  "version": "1.0.0",
+  "sha256": "28a79e0d9edeac56892b0073c9e76f2f0284a92ebc308ac5885f7f643df19d81",
+  "approvedAt": "2026-11-13T23:16:59.118Z",
+  "neobase": ">=4.0.0",
+  "signature": "rnuAF7otzQENym5NF2D9IKmp1iS1DmOAn5kk69zHMJ3PhmvBJgP2CwI84akeRYNfZhwga4+XjModGXToTCB4CQ=="
+}

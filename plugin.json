@@ -1,0 +1,23 @@
+{
+  "id": "neodex.metronome",
+  "name": "Métronome",
+  "version": "1.0.0",
+  "author": "NDesumeur",
+  "description": "Un métronome visuel en pixel art : balancier qui bat la mesure, de 30 à 260 battements par minute, mesures de 2/4 à 12/8, accents réglables temps par temps (fort, normal, muet), croches, triolets et doubles croches, quatre sons et le tempo tapé. Les clics sont réglés à l'échantillon près et continuent si tu changes d'onglet.",
+  "icon": "icon.png",
+  "entry": "index.js",
+  "view": "metronome",
+  "neobase": ">=4.0.0",
+  "type": "app",
+  "category": "Musique",
+  "compatibility": ["windows", "linux"],
+  "syncMode": "fusion",
+  "syncInfo": "Tempo, mesure, sons et accents.",
+  "mobile": false,
+  "system": false,
+  "dependencies": {},
+  "sdk": "2.1.0",
+  "permissions": [
+    "storage"
+  ]
+}

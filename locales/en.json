@@ -1,0 +1,22 @@
+{
+ "Métronome": "Metronome",
+ "MÉTRONOME": "METRONOME",
+ "TEMPO": "TEMPO",
+ "MESURE": "TIME SIGNATURE",
+ "DÉMARRER": "START",
+ "ARRÊTER": "STOP",
+ "TAPER": "TAP",
+ "Espace : démarrer ou arrêter · flèches : tempo (±1, ±5) · T : taper le tempo · A : accent": "Space: start or stop · arrows: tempo (±1, ±5) · T: tap tempo · A: accent",
+ "Accent sur le premier temps": "Accent on the first beat",
+ "Volume": "Volume",
+ "Clique sur un temps de la mesure pour changer son accent : fort, normal ou muet. Le tempo tapé suit tes quatre derniers appuis.": "Click a beat to change its accent: strong, normal or muted. Tap tempo follows your last four taps.",
+ "Sans subdivision": "No subdivision",
+ "Croches": "Eighths",
+ "Triolets": "Triplets",
+ "Doubles croches": "Sixteenths",
+ "Clic": "Click",
+ "Bois": "Wood",
+ "Bip": "Beep",
+ "Cloche": "Bell",
+ "Ce plugin doit être approuvé par NeoDex pour s'ouvrir.": "This plugin must be approved by NeoDex to open."
+}

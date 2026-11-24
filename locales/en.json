@@ -88,5 +88,21 @@
  "pas de clics programmés :": "no scheduled clicks:",
  "au lieu de": "instead of",
  "ne s’arrête pas": "does not stop",
- "clics programmés :": "scheduled clicks:"
+ "clics programmés :": "scheduled clicks:",
+ "ENTRAÎNEMENT": "PRACTICE",
+ "jusqu'à": "up to",
+ "BPM": "BPM",
+ "Tempo fixe": "Fixed tempo",
+ "+2 BPM toutes les 4 mesures": "+2 BPM every 4 bars",
+ "+5 BPM toutes les 8 mesures": "+5 BPM every 8 bars",
+ "+5 BPM toutes les 4 mesures": "+5 BPM every 4 bars",
+ "+5 BPM toutes les 2 mesures": "+5 BPM every 2 bars",
+ "+10 BPM toutes les 16 mesures": "+10 BPM every 16 bars",
+ "Pas de silence": "No silence",
+ "Silence : 1 mesure sur 2": "Silence: 1 bar in 2",
+ "Silence : 2 mesures sur 4": "Silence: 2 bars in 4",
+ "Silence : 1 mesure sur 4": "Silence: 1 bar in 4",
+ "Silence : 4 mesures sur 8": "Silence: 4 bars in 8",
+ "SILENCE": "SILENCE",
+ "TEMPO VISÉ ATTEINT": "TARGET TEMPO REACHED"
 }

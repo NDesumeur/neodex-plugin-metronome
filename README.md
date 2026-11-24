@@ -4,6 +4,10 @@ Un métronome visuel en pixel art, avec la mesure, les accents, les subdivisions
 
 *English version: [README.en.md](README.en.md)*
 
+## Programmes d'accélération et silence (nouveau en 1.1.0)
+
+Le tempo monte tout seul (+5 BPM toutes les 8 mesures…) jusqu'au tempo visé, et des mesures muettes pour tester ton rythme intérieur.
+
 ## Commandes
 
 - **Espace** : démarrer ou arrêter.
@@ -19,6 +23,8 @@ Un métronome visuel en pixel art, avec la mesure, les accents, les subdivisions
 - Subdivisions : **croches, triolets, doubles croches**.
 - Quatre sons : clic, bois, bip, cloche, et le volume.
 - Les clics sont programmés dans l’horloge audio : le tempo reste juste même quand l’onglet n’est pas devant.
+
+- **Entraînement** : un programme fait monter le tempo tout seul (+2 BPM toutes les 4 mesures, +5 toutes les 8…) jusqu'au tempo que tu vises, affiché en bleu pendant qu'il monte. Le **silence** coupe des mesures (1 sur 2, 2 sur 4…) pour vérifier que tu gardes le rythme sans clic.
 
 ## Données et synchronisation
 

@@ -1,7 +1,7 @@
 {
   "id": "neodex.metronome",
   "name": "Métronome",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "NDesumeur",
   "description": "Un métronome visuel en pixel art : balancier qui bat la mesure, de 30 à 260 battements par minute, mesures de 2/4 à 12/8, accents réglables temps par temps (fort, normal, muet), croches, triolets et doubles croches, quatre sons et le tempo tapé. Les clics sont réglés à l'échantillon près et continuent si tu changes d'onglet.",
   "icon": "icon.png",

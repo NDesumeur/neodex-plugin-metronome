@@ -13,17 +13,25 @@ const HTML = `<div class="appWrap wide">
         <div class="row"><label><input type="checkbox" id="meAcc"> Accent sur le premier temps</label></div>
         <div class="row"><span class="hint">Volume</span><input type="range" id="meVol" min="0" max="100" value="70"></div>
       </div>
+      <div class="sysCard"><b>ENTRAÎNEMENT</b>
+        <div class="row"><select class="gSel" id="meProg"></select><span class="hint">jusqu'à</span><input type="number" class="gSel meTop" id="meTop" min="30" max="260"><span class="hint">BPM</span></div>
+        <div class="row"><select class="gSel" id="meSil"></select></div>
+      </div>
       <div class="hint">Clique sur un temps de la mesure pour changer son accent : fort, normal ou muet. Le tempo tapé suit tes quatre derniers appuis.</div>
     </div></div>
 </div>`;
 const CSS = `.gMain{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
 .gameBox{display:grid;place-items:center;padding:10px;background:#05010b;flex:0 0 auto;position:relative}
+.meTop{width:76px}
 .gameBox canvas{height:min(64vh,520px);width:auto;aspect-ratio:240/128;image-rendering:pixelated;cursor:var(--cp,pointer);touch-action:none}
 .gSide{display:flex;flex-direction:column;gap:14px;flex:1;min-width:280px;max-width:440px}
 .gSide .sysCard{display:flex;flex-direction:column;gap:10px}`;
 const ME_SIG = [['2/4', 2, 4], ['3/4', 3, 4], ['4/4', 4, 4], ['5/4', 5, 4], ['6/8', 6, 8], ['7/8', 7, 8], ['9/8', 9, 8], ['12/8', 12, 8]];
 const ME_SUB = [['Sans subdivision', 1], ['Croches', 2], ['Triolets', 3], ['Doubles croches', 4]];
 const ME_SND = [['Clic', 'square', 1600, 1000], ['Bois', 'triangle', 1200, 800], ['Bip', 'sine', 1760, 880], ['Cloche', 'sine', 2093, 1047]];
+// les programmes : [nom, BPM ajoutés, toutes les N mesures] ; le silence : [nom, mesures jouées, mesures muettes]
+const ME_PROG = [['Tempo fixe', 0, 0], ['+2 BPM toutes les 4 mesures', 2, 4], ['+5 BPM toutes les 8 mesures', 5, 8], ['+5 BPM toutes les 4 mesures', 5, 4], ['+5 BPM toutes les 2 mesures', 5, 2], ['+10 BPM toutes les 16 mesures', 10, 16]];
+const ME_SIL = [['Pas de silence', 0, 0], ['Silence : 1 mesure sur 2', 1, 1], ['Silence : 2 mesures sur 4', 2, 2], ['Silence : 1 mesure sur 4', 3, 1], ['Silence : 4 mesures sur 8', 4, 4]];
 const ME_NAMES = [[40, 'Grave'], [60, 'Largo'], [66, 'Larghetto'], [76, 'Adagio'], [108, 'Andante'], [120, 'Moderato'], [156, 'Allegro'], [176, 'Vivace'], [200, 'Presto'], [999, 'Prestissimo']];
 /* ---------- l'habillage pixel art, dessiné à la main : police bitmap (accents compris), cadres, boutons, icônes ----------
    Tout est en pixels pleins, agrandis par 2 sans lissage : aucun dégradé, aucune ombre floue. */
@@ -336,14 +344,14 @@ export default async function (ctx) {
     emblem: ['.....kk.....', '....kwwk....', '....kwak....', '...kwwawk...', '...kwwwak...', '..kwwwwwak..', '..kwwkwwwk..', '.kwwwkwwwwk.', '.kwwwwkwwwk.', 'kwwwwwwwwwwk', 'kkkkkkkkkkkk', '.kk......kk.'],
     icons: [[/^DÉMARRER|^ARRÊTER/, 'play'], [/^TEMPO/, 'clock'], [/^MESURE/, 'note']] });
   const W = 240, H = 128;
-  const cfg = { bpm: 100, sig: 2, sub: 0, snd: 0, acc: true, vol: 70, accents: {}, ...(await doc('reglages')) };
+  const cfg = { bpm: 100, sig: 2, sub: 0, snd: 0, acc: true, vol: 70, accents: {}, prog: 0, top: 160, sil: 0, ...(await doc('reglages')) };
   let saveT = null; const keepCfg = () => { clearTimeout(saveT); saveT = setTimeout(() => folder.write('reglages', cfg).catch(() => {}), 600); };
   const fill = (sel, list) => sel.replaceChildren(...list.map(([n], i) => { const o = el('option', '', n); o.value = i; return o; }));
-  fill($('meSig'), ME_SIG); fill($('meSub'), ME_SUB); fill($('meSnd'), ME_SND);
+  fill($('meSig'), ME_SIG); fill($('meSub'), ME_SUB); fill($('meSnd'), ME_SND); fill($('meProg'), ME_PROG); fill($('meSil'), ME_SIL);
   const sig = () => ME_SIG[cfg.sig], beats = () => sig()[1];
   // l'accent de chaque temps : 2 fort, 1 normal, 0 muet (réglé par mesure)
   const accentOf = i => { const a = cfg.accents[sig()[0]]; return a?.[i] ?? (i === 0 && cfg.acc ? 2 : (sig()[2] === 8 && i % 3 === 0 && i ? 2 : 1)); };
-  let au = null, gain = null, running = false, nextT = 0, step = 0, timer = 0, queue = [], taps = [];
+  let au = null, gain = null, running = false, nextT = 0, step = 0, timer = 0, queue = [], taps = [], bar = 0, live = cfg.bpm;  // live : le tempo du moment (le programme le fait monter)
   const clamp = v => Math.max(30, Math.min(260, Math.round(v)));
   function click(t, kind) {  // kind 2 accent, 1 temps, 0.5 subdivision
     const [, type, hi, lo] = ME_SND[cfg.snd], o = au.createOscillator(), g = au.createGain();
@@ -354,11 +362,13 @@ export default async function (ctx) {
   }
   // programme les clics 1,6 s à l'avance : même un onglet en arrière-plan (minuteries ralenties à 1 par seconde) garde le tempo
   function schedule() {
-    const subs = ME_SUB[cfg.sub][1], spb = 60 / cfg.bpm / (sig()[2] === 8 ? 2 : 1), dt = spb / subs;
+    const subs = ME_SUB[cfg.sub][1], per = subs * beats(), [, add, every] = ME_PROG[cfg.prog] || ME_PROG[0], [, on, off] = ME_SIL[cfg.sil] || ME_SIL[0];
     while (nextT < au.currentTime + 1.6) {
+      if (step && step % per === 0) { bar++; if (add && bar % every === 0 && live < cfg.top) live = Math.min(cfg.top, live + add); }
+      const dt = 60 / live / (sig()[2] === 8 ? 2 : 1) / subs, silent = on > 0 && bar % (on + off) >= on;
       const beat = Math.floor(step / subs) % beats(), sub = step % subs, a = sub ? .5 : accentOf(beat);
-      if (a) click(nextT, a);
-      beatsAt.push([nextT, beat, sub]); nextT += dt; step++;
+      if (a && !silent) click(nextT, a);
+      beatsAt.push([nextT, beat, sub, silent, live]); nextT += dt; step++;
     }
     queue = queue.filter(q => q.t > au.currentTime - 1); if (beatsAt.length > 400) beatsAt.splice(0, 200);
   }
@@ -371,11 +381,11 @@ export default async function (ctx) {
   }
   function play(v = !running) {
     running = v;
-    if (running) { au ??= new AudioContext(); if (!gain) { gain = au.createGain(); gain.connect(au.destination); } gain.gain.value = cfg.vol / 100; au.resume(); step = 0; nextT = au.currentTime + .08; beatsAt = []; schedule(); timer = setInterval(schedule, 250); }
+    if (running) { au ??= new AudioContext(); if (!gain) { gain = au.createGain(); gain.connect(au.destination); } gain.gain.value = cfg.vol / 100; au.resume(); step = 0; bar = 0; live = cfg.bpm; nextT = au.currentTime + .08; beatsAt = []; schedule(); timer = setInterval(schedule, 250); }
     else { clearInterval(timer); for (const q of queue) try { q.o.stop(); } catch {} queue = []; }
     $('mePlay').textContent = running ? 'ARRÊTER' : 'DÉMARRER';
   }
-  const setBpm = v => { cfg.bpm = clamp(v); $('meBpm').value = cfg.bpm; keepCfg(); restart(); };
+  const setBpm = v => { cfg.bpm = clamp(v); live = cfg.bpm; $('meBpm').value = cfg.bpm; keepCfg(); restart(); };
   function tap(t = performance.now()) {
     if (taps.length && t - taps[taps.length - 1] > 2000) taps = [];
     taps.push(t); if (taps.length > 5) taps.shift();
@@ -388,7 +398,7 @@ export default async function (ctx) {
   function draw() {
     g.imageSmoothingEnabled = false; tick++;
     px(g, '#1a120a', 0, 0, W, H); for (let y = 0; y < H; y += 4) px(g, '#20160c', 0, y, W, 1);
-    const cur = current(), spb = 60 / cfg.bpm / (sig()[2] === 8 ? 2 : 1);
+    const cur = current(), bpm = cur?.[4] || cfg.bpm, spb = 60 / bpm / (sig()[2] === 8 ? 2 : 1);
     // le balancier : il va d'un côté à l'autre à chaque temps
     let ang = 0; if (cur) { const p = Math.min(1, (au.currentTime - cur[0]) / spb); ang = Math.cos(p * Math.PI) * (cur[1] % 2 ? -1 : 1) * .5; }
     const bx = 64, by = 96;
@@ -399,16 +409,17 @@ export default async function (ctx) {
     { const r = 30 + (cfg.bpm - 30) / 230 * 24, x = bx + Math.sin(ang) * r, y = by - 8 - Math.cos(ang) * r; px(g, '#16100a', x - 3, y - 2, 7, 5); px(g, '#ffb84a', x - 2, y - 1, 5, 3); }
     px(g, '#ffb84a', bx - 2, by - 10, 4, 4);
     // le tempo
-    const name = ME_NAMES.find(([m]) => cfg.bpm < m)[1];
-    pxFont(g, String(cfg.bpm), 172, 44, '#fff0c8', 32, 'center');
+    const name = ME_NAMES.find(([m]) => bpm < m)[1];
+    pxFont(g, String(bpm), 172, 44, bpm !== cfg.bpm ? '#5ae0ff' : '#fff0c8', 32, 'center');
+    if (cur?.[3]) pxFont(g, 'SILENCE', 172, 96, '#5ae0ff', 8, 'center'); else if (running && cfg.prog && bpm >= cfg.top) pxFont(g, 'TEMPO VISÉ ATTEINT', 172, 96, '#7ee07a', 8, 'center');
     pxFont(g, 'BPM · ' + name, 172, 62, '#ffb84a', 8, 'center');
     pxFont(g, sig()[0] + (cfg.sub ? ' · ' + ME_SUB[cfg.sub][0].toLowerCase() : ''), 172, 80, '#c8a878', 8, 'center');
-    boxes().forEach(([x, y, w, h], i) => { const a = accentOf(i), lit = cur && cur[1] === i && au.currentTime - cur[0] < .15;
+    boxes().forEach(([x, y, w, h], i) => { const a = accentOf(i), lit = cur && !cur[3] && cur[1] === i && au.currentTime - cur[0] < .15;
       px(g, '#0a0604', x, y, w, h); px(g, lit ? (a === 2 ? '#ff5a3a' : '#ffd84a') : a === 2 ? '#7a3a1e' : a ? '#4a3420' : '#241a10', x + 1, y + 1, w - 2, h - 2);
       if (a === 2) px(g, lit ? '#ffffff' : '#ff8a5a', x + 2, y + 2, w - 4, 1); if (!a) px(g, '#5a4a3a', x + w / 2 - 2, y + 6, 4, 1); });
     if (tick % 30 === 0) g.canvas.setAttribute('aria-label', 'Métronome ' + (running ? 'en marche' : 'à l’arrêt') + ', ' + cfg.bpm + ' battements par minute, ' + name + ', mesure ' + sig()[0] + (cur ? ', temps ' + (cur[1] + 1) : '') + '.');
   }
-  const sync = () => { $('meBpm').value = cfg.bpm; $('meSig').value = cfg.sig; $('meSub').value = cfg.sub; $('meSnd').value = cfg.snd; $('meAcc').checked = cfg.acc; $('meVol').value = cfg.vol; };
+  const sync = () => { $('meProg').value = cfg.prog; $('meTop').value = cfg.top; $('meSil').value = cfg.sil; $('meBpm').value = cfg.bpm; $('meSig').value = cfg.sig; $('meSub').value = cfg.sub; $('meSnd').value = cfg.snd; $('meAcc').checked = cfg.acc; $('meVol').value = cfg.vol; };
   $('meBpm').oninput = e => setBpm(+e.target.value);
   for (const [id, d] of [['meM5', -5], ['meM1', -1], ['meP1', 1], ['meP5', 5]]) $(id).onclick = () => setBpm(cfg.bpm + d);
   $('mePlay').onclick = () => { play(); $('mePlay').blur(); };
@@ -417,6 +428,9 @@ export default async function (ctx) {
   $('meSub').onchange = e => { cfg.sub = +e.target.value; keepCfg(); restart(); };
   $('meSnd').onchange = e => { cfg.snd = +e.target.value; keepCfg(); };
   $('meAcc').onchange = e => { cfg.acc = e.target.checked; delete cfg.accents[sig()[0]]; keepCfg(); restart(); };
+  $('meProg').onchange = e => { cfg.prog = +e.target.value; if (cfg.prog && cfg.top <= cfg.bpm) { cfg.top = clamp(cfg.bpm + 40); $('meTop').value = cfg.top; } keepCfg(); live = cfg.bpm; bar = 0; restart(); };
+  $('meTop').onchange = e => { cfg.top = clamp(+e.target.value || cfg.bpm); $('meTop').value = cfg.top; keepCfg(); };
+  $('meSil').onchange = e => { cfg.sil = +e.target.value; bar = 0; keepCfg(); restart(); };
   $('meVol').oninput = e => { cfg.vol = +e.target.value; if (gain) gain.gain.value = cfg.vol / 100; keepCfg(); };
   $('meCanvas').onpointerdown = e => {  // un clic sur un temps : fort → normal → muet
     const c = e.currentTarget.getBoundingClientRect(), x = (e.clientX - c.left) / c.width * W, y = (e.clientY - c.top) / c.height * H;
@@ -439,11 +453,12 @@ export default async function (ctx) {
     setBpm(999); if (cfg.bpm !== 260) bad.push('borne haute'); setBpm(1); if (cfg.bpm !== 30) bad.push('borne basse');
     cfg.sig = 4; cfg.acc = true; cfg.accents = {}; if ([0, 1, 2, 3, 4, 5].map(accentOf).join('') !== '211211') bad.push('accents 6/8 : ' + [0, 1, 2, 3, 4, 5].map(accentOf).join(''));
     if (ME_NAMES.find(([m]) => 100 < m)[1] !== 'Andante') bad.push('nom du tempo');
+    if (ME_PROG.some(p => p[1] && !(p[2] > 0)) || ME_SIL.some(x => x[1] && !(x[2] > 0))) bad.push('programmes');
     Object.assign(cfg, JSON.parse(keepC)); taps = []; clearTimeout(saveT);
     console.assert(!bad.length, 'metronome', bad); view.dataset.selfcheck = bad.join(' | ') || 'ok';
   }
   sync();
   let raf = 0; const frame = () => { if (!on()) { raf = 0; return; } raf = requestAnimationFrame(frame); draw(); };
   ctx.onOpen(() => { g ??= $('meCanvas').getContext('2d'); if (!raf) raf = requestAnimationFrame(frame); });
-  $('meCanvas').__state = () => ({ running, bpm: cfg.bpm, clicks: queue.length });
+  $('meCanvas').__state = () => ({ running, bpm: cfg.bpm, live, bar, clicks: queue.length, silent: beatsAt.filter(b => b[3]).length });
 }
